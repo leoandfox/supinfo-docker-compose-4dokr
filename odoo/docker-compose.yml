@@ -1,0 +1,18 @@
+version: '3.7'
+services: #Odoo a besoin de deux services pour fonctionner, un service web codé en python et une base de donnée postgres. Voir : https://hub.docker.com/_/odoo
+  web:
+    image: odoo:12.0
+    depends_on:
+      - mydb #On spécifie que notre service web a besoin du service mydb pour pouvoir démarrer.
+    ports:
+      - "8069:8069" #on redirige le port 8069 de notre host sur le port 8069 de la machine virtuelle, port sur le quel le service odoo tourne
+    environment: # on indique à odoo les paramètres de connexions à la base de donnée
+    - HOST=mydb #correspond au nom du service de la base de donnée, si vous utisez une base de donnée externe, vous pouvez mettre l'adresse ip de cette base de donnée à ce niveau
+    - USER=odoo
+    - PASSWORD=myodoo
+  mydb:
+    image: postgres:10
+    environment: #Les paramètres de la base de donnée. Voir :https://hub.docker.com/_/postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=myodoo
+      - POSTGRES_USER=odoo
