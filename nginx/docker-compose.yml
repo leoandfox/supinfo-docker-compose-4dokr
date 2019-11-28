@@ -1,0 +1,6 @@
+version: '3.7'
+services:
+  webserver-nginx: #Nom de notre service, vous pouvez mettre ce que vous voulez ici mais essayez de mettre un nom significatif
+    image: "nginx:latest" # L'image que notre service va uilisé pour se déployé
+    ports:
+      - 8081:80 # La redirection de port, on demande à ce que toutes requêtes venant sur le port 8081 de notre serveur aille sur le port 80 du container.
