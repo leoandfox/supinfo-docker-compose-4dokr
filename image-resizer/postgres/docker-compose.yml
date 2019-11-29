@@ -8,12 +8,8 @@ services:
       POSTGRES_USER: supinfo
       POSTGRES_DB: images
     volumes:
-      - type: volume
-        source: pgdata
-        target: /var/lib/postgresql/data
-      - type: bind
-        source: ./tables.sql
-        target: /docker-entrypoint-initdb.d/tables.sql
+      - pgdata:/var/lib/postgresql/data
+      - ./tables.sql:/docker-entrypoint-initdb.d/tables.sql
     networks:
       - image-resizer
 
