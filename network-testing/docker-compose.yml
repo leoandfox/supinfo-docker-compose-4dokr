@@ -1,4 +1,4 @@
-version: '2.4' # On utilise la version 2, car au moment où j'écris ce docker file 29/11/2019, des options comme la gateway ne sont pas supportés dans le docker-compose
+version: '2.4' # On utilise la version 2, car au moment où j'écris ce docker file 29/11/2019, des options comme la gateway ne sont pas supportées dans le docker-compose
 services:
   app1: #nom du service, utilisable dans le docker compose par un autre service
     image: "nginx:latest"
