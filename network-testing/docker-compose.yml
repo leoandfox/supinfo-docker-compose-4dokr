@@ -1,0 +1,22 @@
+version: '2.4' # On utilise la version 2, car au moment où j'écris ce docker file 29/11/2019, des options comme la gateway ne sont pas supportés dans le docker-compose
+services:
+  app1: #nom du service, utilisable dans le docker compose par un autre service
+    image: "nginx:latest"
+    container_name: app1
+    networks:
+      - 4dokr   
+  app2: #nom du service
+    image: "nginx:latest"
+    container_name: app2 #nom du container
+    networks:
+      - 4dokr
+networks:
+  4dokr:
+    name: 4dokr # Cet attribut n'est disponible qu'à partir de la version 2.1
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.28.0.0/16"
+          gateway: "172.28.5.254"
+          ip_range: "172.28.5.0/24"  
