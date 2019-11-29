@@ -1,0 +1,26 @@
+version: "3.7"
+services:
+  db:
+    image: postgres
+    container_name: images
+    environment:
+      POSTGRES_PASSWORD: supinfo
+      POSTGRES_USER: supinfo
+      POSTGRES_DB: images
+    volumes:
+      - type: volume
+        source: pgdata
+        target: /var/lib/postgresql/data
+      - type: bind
+        source: ./tables.sql
+        target: /docker-entrypoint-initdb.d/tables.sql
+    networks:
+      - image-resizer
+
+volumes:
+  pgdata: # on crée le volume pgdata avec pour nom pgdata
+    name: "pgdata"
+
+networks:
+  image-resizer: # on crée le réseau image-resizer avec pour nom image-resizer
+    name: "image-resizer"
