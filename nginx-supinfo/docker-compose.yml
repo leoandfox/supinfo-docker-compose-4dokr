@@ -1,0 +1,8 @@
+version: "3.7"
+services:
+  nginx-supinfo:
+    build: . #Pour construire l'image à partir du Dockerfile contenu dans le répertoire du Docker-compose
+    image: nginx-supinfo:0.2 #Associer au paramètre build , il permet de donner un nom à notre image
+    container_name: "webserver-nginx-supinfo"
+    ports:
+      - 8088:80
