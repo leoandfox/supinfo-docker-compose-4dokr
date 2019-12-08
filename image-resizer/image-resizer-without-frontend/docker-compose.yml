@@ -1,0 +1,112 @@
+version: "3.7"
+services:
+  #supinfo-frontend:
+  #image: alexandrevilain/image-resizer-frontend
+  #container_name: "supinfo-frontend"
+  #networks:
+  #- network-imageresizer
+
+  # Images : Container postgres qui stockera les images(pas les images docker mais les images du projet)
+  supinfo-image-resizer-postgres-container-of-images:
+    image: postgres
+    container_name: "supinfo-image-resizer-postgres-container-of-images"
+    environment:
+      POSTGRES_PASSWORD: "supinfo"
+      POSTGRES_USER: "supinfo"
+      POSTGRES_DB: "images"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./tables.sql:/docker-entrypoint-initdb.d/tables.sql
+    networks:
+      - network-imageresizer
+
+  #Image Api (Une Api Rest pour Postgres)
+  supinfo-image-resizer-image-api:
+    image: postgrest/postgrest
+    container_name: 'supinfo-image-resizer-image-api'
+    environment: #Pour définir les variables d'environnement requis par l'image jobs-api
+      - PGRST_DB_URI=postgres://supinfo:supinfo@db:5432/images
+      - PGRST_DB_ANON_ROLE=web_anon
+      - PGRST_DB_SCHEMA=api
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+    networks:
+      - network-imageresizer
+
+  #nats: ATS is an open-source, high-performance, cloud native messaging system. https://hub.docker.com/_/nats
+  supinfo-image-resizer-nats:
+    image: nats:latest
+    container_name: "supinfo-image-resizer-nats"
+    networks:
+      - network-imageresizer
+
+  #minio: MinIO is High Performance Object Storage https://hub.docker.com/r/minio/minio
+  supinfo-image-resizer-minio:
+    image: minio/minio
+    container_name: "supinfo-image-resizer-minio"
+    command: server /data
+    networks:
+      - network-imageresizer
+    environment:
+      - MINIO_ACCESS_KEY=supinfo
+      - MINIO_SECRET_KEY=supinfo1234
+    ports:
+      - 9000:9000
+    volumes:
+      - miniodata:/data
+
+  # Jobs Api
+  supinfo-image-resizer-jobs-api:
+    image: alexandrevilain/image-resizer-jobs-api
+    container_name: "supinfo-image-resizer-jobs-api"
+    networks:
+      - network-imageresizer
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+      - supinfo-image-resizer-minio
+      - supinfo-image-resizer-nats
+    environment: #Pour définir les variables d'environnement requis par l'image jobs-api
+      - API_PORT=3001
+      - STORAGE_BUCKETNAME=fairytailbucketjobsapi
+      - STORAGE_SERVER=supinfo-image-resizer-minio
+      - STORAGE_PORT=9000
+      - STORAGE_ACCESSKEY=supinfo
+      - STORAGE_SECRETKEY=supinfo1234
+      - STORAGE_SSL=false
+      - NATS_CONNECTIONSTRINGS=nats://supinfo-image-resizer-nats:4222
+      - NATS_QUEUE=mycustomnatsqueuejobsapi
+
+
+  # Worker
+  supinfo-image-resizer-worker:
+    image: alexandrevilain/image-resizer-worker
+    container_name: "supinfo-image-resizer-worker"
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+      - supinfo-image-resizer-minio
+      - supinfo-image-resizer-nats
+    networks:
+      - network-imageresizer
+    environment: #Pour définir les variables d'environnement requis par l'image jobs-api
+      - NATS_SERVERS=supinfo-image-resizer-nats
+      - NATS_QUEUE=mycustomnatsqueueworker
+      - POSTGRES_CONNECTION_STRING=postgres://supinfo:supinfo@db:5432/images
+      - STORAGE_SERVER=supinfo-image-resizer-minio:9000
+      - STORAGE_PUBLIC_ENDPOINT=localhost:9000
+      - STORAGE_BUCKETNAME=fairytailbucketworker
+      - STORAGE_ACCESSKEY=supinfo
+      - STORAGE_SECRETKEY=supinfo1234
+      - STORAGE_SSL=false
+
+
+#1. On crée le réseau Utilisé par notre application
+networks:
+  network-imageresizer:
+    name: network-imageresizer
+#2. On crée le stockage pour postgres et minio
+volumes:
+  pgdata:
+    name: "pgdata"
+  miniodata:
+    name: "miniodata"
+
