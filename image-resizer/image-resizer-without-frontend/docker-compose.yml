@@ -21,7 +21,7 @@ services:
     image: postgrest/postgrest
     container_name: "supinfo-image-resizer-image-api"
     environment: #Pour définir les variables d'environnement requis par l'image jobs-api
-      - PGRST_DB_URI=postgres://supinfo:supinfo@supinfo-image-resizer-postgres-container-of-images:5432/images
+      - PGRST_DB_URI=postgres://supinfo:supinfo@supinfo-image-resizer-postgres-container-of-images:5432/images?sslmode=disable
       - PGRST_DB_ANON_ROLE=web_anon
       - PGRST_DB_SCHEMA=api
     depends_on:
@@ -92,13 +92,30 @@ services:
     environment: #Pour définir les variables d'environnement requis par l'image jobs-api
       - NATS_SERVERS=nats://supinfo-image-resizer-nats:4222
       - NATS_QUEUE=mycustomnatsqueuejobsapi
-      - POSTGRES_CONNECTION_STRING=postgres://supinfo:supinfo@supinfo-image-resizer-postgres-container-of-images:5432/images
+      - POSTGRES_CONNECTION_STRING=postgres://supinfo:supinfo@supinfo-image-resizer-postgres-container-of-images:5432/images?sslmode=disable
       - STORAGE_SERVER=supinfo-image-resizer-minio:9000
       - STORAGE_PUBLIC_ENDPOINT=localhost:9000
       - STORAGE_BUCKETNAME=fairytailbucketjobsapi
       - STORAGE_ACCESSKEY=supinfo
       - STORAGE_SECRETKEY=supinfo1234
       - STORAGE_SSL=false
+
+  # J'ai ajouté cette interface d'administration de postgres, pgadmin
+  #Commande CLI : docker run --name supinfo-image-resizer-admin-postgres —network=network-imageresizer -p 5050:5050 -d fenglc/pgadmin4 
+  #default user: pgadmin4@pgadmin.org
+  #default password: admin
+  # Vous pouvez ensuite vous connecter à votre base de donnée depuis cette interface
+  supinfo-image-resizer-admin-postgres:
+    hostname: supinfo-image-resizer-admin-postgres
+    image: fenglc/pgadmin4
+    container_name: "supinfo-image-resizer-admin-postgres"
+    networks:
+      - network-imageresizer
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+    ports:
+      - 5050:5050
+
 
 #1. On crée le réseau Utilisé par notre application
 networks:
