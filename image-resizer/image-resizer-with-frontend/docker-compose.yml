@@ -1,5 +1,23 @@
 version: "3.7"
 services:
+  # Frontend du projet image-resizer
+  supinfo-image-resizer-frontend:
+    hostname: supinfo-image-resizer-frontend
+    build: ./frontend
+    image: supinfo-image-resizer-frontend:0.1
+    container_name: "supinfo-image-resizer-frontend"
+    networks:
+      - network-imageresizer
+    ports:
+      - 8002:80
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+      - supinfo-image-resizer-image-api
+      - supinfo-image-resizer-jobs-api
+      - supinfo-image-resizer-worker
+      - supinfo-image-resizer-minio
+      - supinfo-image-resizer-nats
+
   # Images : Container postgres qui stockera les images(pas les images docker mais les images du projet)
   supinfo-image-resizer-postgres-container-of-images:
     hostname: supinfo-image-resizer-postgres-container-of-images 
@@ -110,4 +128,3 @@ volumes:
     name: "pgdata"
   miniodata:
     name: "miniodata"
-
