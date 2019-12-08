@@ -128,3 +128,4 @@ volumes:
     name: "pgdata"
   miniodata:
     name: "miniodata"
+
