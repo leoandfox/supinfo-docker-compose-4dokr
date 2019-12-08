@@ -73,7 +73,7 @@ services:
     volumes:
       - miniodata:/data
 
-  # Jobs Api
+  # Jobs Api: Il semble jouer le rôle de publisher dans le concept NATS qui publie un message avec la queue mycustomnatsqueuejobsapi
   supinfo-image-resizer-jobs-api:
     hostname: supinfo-image-resizer-jobs-api
     image: alexandrevilain/image-resizer-jobs-api
@@ -96,7 +96,7 @@ services:
       - NATS_QUEUE=mycustomnatsqueuejobsapi
     ports:
       - 3001:3001
-  # Worker
+  # Worker: De ma compréhension , le worker semble être u subscriber qui a souscrit à la queue mycustomnatsqueuejobsapi, qui va donc recevoir les messages de cette queue
   supinfo-image-resizer-worker:
     hostname: supinfo-image-resizer-worker
     image: alexandrevilain/image-resizer-worker
@@ -109,11 +109,11 @@ services:
       - network-imageresizer
     environment: #Pour définir les variables d'environnement requis par l'image jobs-api
       - NATS_SERVERS=nats://supinfo-image-resizer-nats:4222
-      - NATS_QUEUE=mycustomnatsqueueworker
+      - NATS_QUEUE=mycustomnatsqueuejobsapi
       - POSTGRES_CONNECTION_STRING=postgres://supinfo:supinfo@supinfo-image-resizer-postgres-container-of-images:5432/images
       - STORAGE_SERVER=supinfo-image-resizer-minio:9000
-      - STORAGE_PUBLIC_ENDPOINT=0.0.0.0:9000
-      - STORAGE_BUCKETNAME=fairytailbucketworker
+      - STORAGE_PUBLIC_ENDPOINT=localhost:9000
+      - STORAGE_BUCKETNAME=fairytailbucketjobsapi
       - STORAGE_ACCESSKEY=supinfo
       - STORAGE_SECRETKEY=supinfo1234
       - STORAGE_SSL=false
