@@ -1,0 +1,40 @@
+version: "3.7"
+services:
+  wordpressapp:
+    image: wordpress
+    networks:
+      - network-app-wordpress
+    ports:
+      - 8005:80
+    volumes:
+      - dbdata:/var/lib/mysql
+    depends_on:
+      - db-for-wordpress
+    deploy:
+      mode: replicated
+      replicas: 2
+
+  dbforwordpress:
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: dbforwordpress
+      MYSQL_USER: leoandfox
+      MYSQL_PASSWORD: leoandfox
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - wordpressdata:/var/www/html
+    networks:
+      - network-app-wordpress
+    deploy:
+      mode: replicated
+      replicas: 2
+#1. On crée le réseau Utilisé par notre application
+networks:
+  network-app-wordpress:
+    name: network-app-wordpress
+#2. On crée le stockage pour postgres et minio
+volumes:
+  dbdata:
+    name: "dbdata"
+  wordpressdata:
+    name: "wordpressdata"
