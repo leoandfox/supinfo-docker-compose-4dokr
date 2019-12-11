@@ -1,0 +1,165 @@
+version: "3.7"
+services:
+  # Frontend du projet image-resizer
+  frontend:
+    #hostname: supinfo-image-resizer-frontend
+    #build: ./frontend
+    image: supinfo-image-resizer-frontend:0.1
+    container_name: "supinfo-image-resizer-frontend"
+    networks:
+      - network-imageresizer
+    ports:
+      - 8002:80
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+      - supinfo-image-resizer-image-api
+      - supinfo-image-resizer-jobs-api
+      - supinfo-image-resizer-worker
+      - supinfo-image-resizer-minio
+      - supinfo-image-resizer-nats
+    deploy:
+      mode: replicated
+      replicas: 2
+  # Images : Container postgres qui stockera les images(pas les images docker mais les images du projet)
+  postgres-container-of-images:
+    hostname: supinfo-image-resizer-postgres-container-of-images 
+    image: postgres
+    container_name: "supinfo-image-resizer-postgres-container-of-images"
+    environment:
+      POSTGRES_PASSWORD: "supinfo"
+      POSTGRES_USER: "supinfo"
+      POSTGRES_DB: "images"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./tables.sql:/docker-entrypoint-initdb.d/tables.sql
+    networks:
+      - network-imageresizer
+    deploy:
+      mode: replicated
+      replicas: 2
+  #Image Api (Une Api Rest pour Postgres)
+  image-api:
+    hostname: supinfo-image-resizer-image-api
+    image: postgrest/postgrest
+    container_name: "supinfo-image-resizer-image-api"
+    environment: #Pour définir les variables d'environnement requis par l'image jobs-api
+      - PGRST_DB_URI=postgres://supinfo:supinfo@supinfo-image-resizer-postgres-container-of-images:5432/images?sslmode=disable
+      - PGRST_DB_ANON_ROLE=web_anon
+      - PGRST_DB_SCHEMA=api
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+    networks:
+      - network-imageresizer
+    ports:
+      - 3000:3000
+    deploy:
+      mode: replicated
+      replicas: 2
+  #nats: ATS is an open-source, high-performance, cloud native messaging system. https://hub.docker.com/_/nats
+  nats:
+    hostname: supinfo-image-resizer-nats
+    image: nats:latest
+    container_name: "supinfo-image-resizer-nats"
+    networks:
+      - network-imageresizer
+    deploy:
+      mode: replicated
+      replicas: 2
+  #minio: MinIO is High Performance Object Storage https://hub.docker.com/r/minio/minio
+  minio:
+    hostname: supinfo-image-resizer-minio
+    image: minio/minio
+    container_name: "supinfo-image-resizer-minio"
+    command: server /data
+    networks:
+      - network-imageresizer
+    environment:
+      - MINIO_ACCESS_KEY=supinfo
+      - MINIO_SECRET_KEY=supinfo1234
+    ports:
+      - 9000:9000
+    volumes:
+      - miniodata:/data
+    deploy:
+      mode: replicated
+      replicas: 2
+  # Jobs Api: Il semble jouer le rôle de publisher dans le concept NATS qui publie un message avec la queue mycustomnatsqueuejobsapi
+  jobs-api:
+    hostname: supinfo-image-resizer-jobs-api
+    image: alexandrevilain/image-resizer-jobs-api
+    #container_name: "supinfo-image-resizer-jobs-api"
+    networks:
+      - network-imageresizer
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+      - supinfo-image-resizer-minio
+      - supinfo-image-resizer-nats
+    environment: #Pour définir les variables d'environnement requis par l'image jobs-api
+      - API_PORT=3001
+      - STORAGE_BUCKETNAME=fairytailbucketjobsapi
+      - STORAGE_SERVER=supinfo-image-resizer-minio
+      - STORAGE_PORT=9000
+      - STORAGE_ACCESSKEY=supinfo
+      - STORAGE_SECRETKEY=supinfo1234
+      - STORAGE_SSL=false
+      - NATS_CONNECTIONSTRINGS=nats://supinfo-image-resizer-nats:4222
+      - NATS_QUEUE=mycustomnatsqueuejobsapi
+    ports:
+      - 3001:3001
+    deploy:
+      mode: replicated
+      replicas: 2
+  # Worker: De ma compréhension , le worker semble être u subscriber qui a souscrit à la queue mycustomnatsqueuejobsapi, qui va donc recevoir les messages de cette queue
+  worker:
+    hostname: supinfo-image-resizer-worker
+    image: alexandrevilain/image-resizer-worker
+    container_name: "supinfo-image-resizer-worker"
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+      - supinfo-image-resizer-minio
+      - supinfo-image-resizer-nats
+    networks:
+      - network-imageresizer
+    environment: #Pour définir les variables d'environnement requis par l'image jobs-api
+      - NATS_SERVERS=nats://supinfo-image-resizer-nats:4222
+      - NATS_QUEUE=mycustomnatsqueuejobsapi
+      - POSTGRES_CONNECTION_STRING=postgres://supinfo:supinfo@supinfo-image-resizer-postgres-container-of-images:5432/images?sslmode=disable
+      - STORAGE_SERVER=supinfo-image-resizer-minio:9000
+      - STORAGE_PUBLIC_ENDPOINT=localhost:9000
+      - STORAGE_BUCKETNAME=fairytailbucketjobsapi
+      - STORAGE_ACCESSKEY=supinfo
+      - STORAGE_SECRETKEY=supinfo1234
+      - STORAGE_SSL=false
+    deploy:
+      mode: replicated
+      replicas: 2
+  # J'ai ajouté cette interface d'administration de postgres, pgadmin
+  #Commande CLI : docker run --name supinfo-image-resizer-admin-postgres —network=network-imageresizer -p 5050:5050 -d fenglc/pgadmin4 
+  #default user: pgadmin4@pgadmin.org
+  #default password: admin
+  # Vous pouvez ensuite vous connecter à votre base de donnée depuis cette interface
+  admin-postgres:
+    hostname: supinfo-image-resizer-admin-postgres
+    image: fenglc/pgadmin4
+    container_name: "supinfo-image-resizer-admin-postgres"
+    networks:
+      - network-imageresizer
+    depends_on:
+      - supinfo-image-resizer-postgres-container-of-images
+    ports:
+      - 5050:5050
+    deploy:
+      mode: replicated
+      replicas: 2
+
+#1. On crée le réseau Utilisé par notre application
+networks:
+  network-imageresizer:
+    name: network-imageresizer
+#2. On crée le stockage pour postgres et minio
+volumes:
+  pgdata:
+    name: "pgdata"
+  miniodata:
+    name: "miniodata"
+
